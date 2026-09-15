@@ -14,7 +14,8 @@
         ".next/**",
         "!.next/cache/**",
         "!.next/dev/**",
-        ".next/standalone/**"
+        ".next/standalone/**",
+        "dist/**"
       ]
     },
     "lint": {

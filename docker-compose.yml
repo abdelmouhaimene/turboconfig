@@ -1,0 +1,109 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: turboconfig-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${DATABASE_USER:-turboconfig}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:-turboconfig_secret}
+      POSTGRES_DB: ${DATABASE_NAME:-turboconfig_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER:-turboconfig} -d ${DATABASE_NAME:-turboconfig_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - turboconfig-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: turboconfig-redis
+    restart: always
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-redis_secret}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-redis_secret}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - turboconfig-network
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: api
+      target: runner-nestjs
+    container_name: turboconfig-api
+    restart: always
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+      - DATABASE_HOST=postgres
+      - DATABASE_PORT=5432
+      - DATABASE_USER=${DATABASE_USER:-turboconfig}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD:-turboconfig_secret}
+      - DATABASE_NAME=${DATABASE_NAME:-turboconfig_db}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-redis_secret}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - turboconfig-network
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: web
+      target: runner-nextjs
+    container_name: turboconfig-web
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    networks:
+      - turboconfig-network
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        APP_NAME: dashboard
+      target: runner-nextjs
+    container_name: turboconfig-dashboard
+    restart: always
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+    networks:
+      - turboconfig-network
+
+volumes:
+  postgres-data:
+  redis-data:
+
+networks:
+  turboconfig-network:
+    driver: bridge

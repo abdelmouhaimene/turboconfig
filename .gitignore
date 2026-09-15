@@ -36,3 +36,10 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
+
+# Docker
+docker-compose.override.yml
+postgres-data/
+redis-data/
+postgres-data-dev/
+redis-data-dev/
