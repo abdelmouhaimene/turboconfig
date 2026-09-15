@@ -1,0 +1,1 @@
+export * as testType from './testtype/testType'
